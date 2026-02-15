@@ -57,14 +57,3 @@ col2.metric("📊 Average Sales", round(df_filtered["Original Sales"].mean(), 2)
 col3.metric("🔮 Forecast Value", round(df_filtered["Forecast"].iloc[-1], 2))
 
 st.success("✅ Dashboard updated dynamically based on selected date range!")
-
-st.markdown("""
-### 🔎 Summary
-
-- 🚀 Strong upward trend observed  
-- 🔄 Seasonal fluctuations visible  
-- 🔮 Forecast provides short-term prediction using moving average  
-- 📊 Model captures demand pattern effectively  
-
-This dynamic dashboard allows interactive sales analysis.
-""")
