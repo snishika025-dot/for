@@ -17,20 +17,29 @@ except FileNotFoundError:
     st.error("❌ Data file not found.")
     st.stop()
 
-# ---------------- Sidebar Forecast Year Selection ----------------
+# ---------------- Sidebar Options ----------------
 st.sidebar.header("📅 Forecast Settings")
 
 forecast_year = st.sidebar.number_input(
     "Select Forecast Year",
     min_value=2010,
-    max_value=2030,
+    max_value=2035,
     value=2015
 )
 
-# ---------------- Use Historical Data Until Previous Year ----------------
+month_list = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+]
+
+selected_month = st.sidebar.selectbox(
+    "Select Forecast Month",
+    month_list
+)
+
+# ---------------- Prepare Historical Data ----------------
 historical_df = df[str(df.index.year.min()):str(forecast_year - 1)].copy()
 
-# ---------------- Build Forecast Model ----------------
 historical_df["Time"] = range(len(historical_df))
 
 X = historical_df["Time"]
@@ -39,7 +48,7 @@ Y = historical_df["Original Sales"]
 coeff = np.polyfit(X, Y, 1)
 trend_model = np.poly1d(coeff)
 
-# Forecast 12 months
+# ---------------- Forecast 12 Months ----------------
 future_periods = 12
 last_time = historical_df["Time"].iloc[-1]
 
@@ -48,36 +57,35 @@ future_time = np.arange(last_time + 1,
 
 future_forecast = trend_model(future_time)
 
-# Create Future Dates
 future_dates = pd.date_range(
     start=f"{forecast_year}-01-01",
     periods=12,
     freq="MS"
 )
 
-# ---------------- Create Dynamic Forecast Table ----------------
 forecast_df = pd.DataFrame({
     "Month": future_dates.strftime("%B"),
     "Year": future_dates.year,
     "Forecast Sales": future_forecast.round(2)
 })
 
-# ---------------- Display Forecast ----------------
-st.markdown(f"## 📊 Monthly Forecast for {forecast_year}")
+# ---------------- Get Selected Month Forecast ----------------
+result = forecast_df[
+    (forecast_df["Month"] == selected_month) &
+    (forecast_df["Year"] == forecast_year)
+]
 
-st.dataframe(forecast_df, use_container_width=True)
+if not result.empty:
+    forecast_value = result["Forecast Sales"].values[0]
 
-# ---------------- KPI Section ----------------
-st.markdown("## 📌 Forecast Summary")
+    st.markdown("## 📊 Forecast Result")
 
-col1, col2 = st.columns(2)
+    st.metric(
+        label=f"🚜 Forecast for {selected_month} {forecast_year}",
+        value=forecast_value
+    )
 
-avg_forecast = future_forecast.mean()
-avg_actual = historical_df["Original Sales"].mean()
+else:
+    st.warning("⚠ No forecast data available.")
 
-col1.metric("🔮 Avg Forecast", round(avg_forecast, 2))
-
-growth_percent = ((avg_forecast - avg_actual) / avg_actual) * 100
-col2.metric("📈 Expected Growth %", round(growth_percent, 2))
-
-st.success(f"✅ Forecast for {forecast_year} Generated Dynamically!")
+st.success("✅ Dynamic Month & Year Forecast Generated!")
