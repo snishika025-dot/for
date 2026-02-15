@@ -39,14 +39,15 @@ future_dates = pd.date_range(start="2015-01-01",
                              periods=12,
                              freq="MS")
 
+# Create dynamic forecast table
 forecast_df = pd.DataFrame({
     "Month": future_dates.strftime("%B"),
     "Year": future_dates.year,
-    "Forecast Sales (2015)": future_forecast.round(2)
+    "Forecast Sales": future_forecast.round(2)
 })
 
 # ---------------- Display Section ----------------
-st.markdown("## 📊 2015 Monthly Forecast")
+st.markdown("## 📊 2015 Monthly Forecast (Dynamic)")
 
 st.dataframe(forecast_df, use_container_width=True)
 
@@ -55,11 +56,12 @@ st.markdown("## 📌 Summary Metrics")
 
 col1, col2 = st.columns(2)
 
-col1.metric("🔮 Avg Forecast (2015)",
-            round(future_forecast.mean(), 2))
+avg_forecast = future_forecast.mean()
+avg_actual = df["Original Sales"].mean()
 
-col2.metric("📈 Expected Growth %",
-            round(((future_forecast.mean() - df["Original Sales"].mean())
-                   / df["Original Sales"].mean()) * 100, 2))
+col1.metric("🔮 Avg Forecast (2015)", round(avg_forecast, 2))
 
-st.success("✅ 2015 Forecast Generated Successfully!")
+growth_percent = ((avg_forecast - avg_actual) / avg_actual) * 100
+col2.metric("📈 Expected Growth %", round(growth_percent, 2))
+
+st.success("✅ Dynamic Month-Year Forecast Generated Successfully!")
