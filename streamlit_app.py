@@ -1,33 +1,15 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+import numpy as np
 
-# Page config
-st.set_page_config(page_title="Tractor Sales Dashboard",
+# ---------------- Page Config ----------------
+st.set_page_config(page_title="Tractor Sales Forecast Dashboard",
                    layout="wide")
 
-# ---------- Custom Professional Theme ----------
-st.markdown("""
-    <style>
-    .main {
-        background: linear-gradient(to right, #1f4037, #99f2c8);
-    }
-    .stMetric {
-        background-color: rgba(255,255,255,0.15);
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-    }
-    h1, h2, h3 {
-        color: white;
-    }
-    </style>
-""", unsafe_allow_html=True)
+st.title("🚜 Tractor Sales Forecast (2010–2015)")
 
-st.title("🚜 Tractor Sales Forecast Dashboard")
-
-# ---------- Load Data ----------
+# ---------------- Load Data ----------------
 try:
     df = pd.read_csv("tractor_sales_smoothed.csv",
                      index_col="Month-Year",
@@ -36,57 +18,90 @@ except FileNotFoundError:
     st.error("❌ Data file not found.")
     st.stop()
 
-# ---------- Sidebar ----------
-st.sidebar.header("📅 Filter Options")
+# ---------------- Filter 2010–2014 ----------------
+df = df["2010":"2014"].copy()
 
-start_date = st.sidebar.date_input("Start Date", df.index.min())
-end_date = st.sidebar.date_input("End Date", df.index.max())
+# ---------------- Forecast for 2015 ----------------
+# Create time index
+df["Time"] = range(len(df))
 
-df_filtered = df.loc[start_date:end_date].copy()
+X = df["Time"]
+Y = df["Original Sales"]
 
-# ---------- Forecast ----------
-df_filtered["Forecast"] = df_filtered["Original Sales"].rolling(3).mean()
+# Linear regression trend model
+coeff = np.polyfit(X, Y, 1)
+trend_model = np.poly1d(coeff)
 
-# ---------- KPI Section ----------
-st.markdown("## 📊 Sales Overview")
+# Forecast next 12 months (2015)
+future_periods = 12
+last_time = df["Time"].iloc[-1]
+
+future_time = np.arange(last_time + 1, last_time + 1 + future_periods)
+future_forecast = trend_model(future_time)
+
+# Create 2015 monthly dates
+future_dates = pd.date_range(start="2015-01-01",
+                             periods=12,
+                             freq="MS")
+
+forecast_df = pd.DataFrame({
+    "Original Sales": np.nan,
+    "Smoothed Sales": np.nan,
+    "Forecast": future_forecast
+}, index=future_dates)
+
+# Add forecast column to historical data
+df["Forecast"] = np.nan
+
+# Combine historical + forecast
+df_final = pd.concat([df.drop(columns="Time"), forecast_df])
+
+# ---------------- KPI Section ----------------
+st.markdown("## 📊 Key Metrics (2010–2015)")
 
 col1, col2, col3 = st.columns(3)
 
-col1.metric("📈 Latest Sales",
-            int(df_filtered["Original Sales"].iloc[-1]))
+col1.metric("📈 Avg Sales (2010–2014)",
+            round(df["Original Sales"].mean(), 2))
 
-col2.metric("📊 Average Sales",
-            round(df_filtered["Original Sales"].mean(), 2))
+col2.metric("🔮 Avg Forecast (2015)",
+            round(future_forecast.mean(), 2))
 
-col3.metric("🔮 Forecast (Next Est.)",
-            round(df_filtered["Forecast"].iloc[-1], 2))
+col3.metric("📊 Growth Projection %",
+            round(((future_forecast.mean() - df["Original Sales"].mean())
+                   / df["Original Sales"].mean()) * 100, 2))
 
-# ---------- Chart ----------
-st.markdown("## 📈 Trend Analysis")
+# ---------------- Chart ----------------
+st.markdown("## 📈 Historical vs Forecast")
 
 fig, ax = plt.subplots(figsize=(12, 6))
 
-ax.plot(df_filtered["Original Sales"], label="Original Sales")
-ax.plot(df_filtered["Smoothed Sales"], label="Smoothed Sales")
-ax.plot(df_filtered["Forecast"], label="Forecast (3M MA)", linestyle="--")
+ax.plot(df_final["Original Sales"], label="Original Sales")
+ax.plot(df_final["Smoothed Sales"], label="Smoothed Sales")
+ax.plot(df_final["Forecast"], linestyle="--", label="2015 Forecast")
 
-ax.set_title("Tractor Sales Forecast Analysis")
-ax.set_xlabel("Month-Year")
+# Forecast separation line
+ax.axvline(pd.to_datetime("2015-01-01"),
+           color="black",
+           linestyle=":",
+           label="Forecast Start (2015)")
+
+ax.set_title("🚜 Tractor Sales: 2010–2015 Forecast")
+ax.set_xlabel("Year")
 ax.set_ylabel("Sales Volume")
 ax.legend()
 ax.grid(True)
 
 st.pyplot(fig)
 
-# ---------- Summary ----------
+# ---------------- Executive Summary ----------------
 st.markdown("""
 ## 🔎 Executive Summary
 
-✅ Clear upward growth trend  
-🔁 Strong seasonal pattern  
-🔮 Moving average forecast gives short-term prediction  
-📊 Suitable for business planning & inventory management  
+📈 Historical data from 2010–2014 shows consistent upward growth.  
+🔁 Seasonal fluctuations are visible across years.  
+🔮 2015 forecast is generated using linear trend projection.  
+📊 Model indicates continued expansion in tractor demand.  
 
----
-Developed with Streamlit | MBA Business Analytics Project
+This forecast can support production planning and inventory decisions.
 """)
